@@ -156,14 +156,13 @@ def fit_fwhm(im_crop,x_crop,y_crop,x,y):
     size_y = fwhm_y *pix
     return size_x,size_y
 
-def beam_params(size_x,size_y,powers,ramp,wl):
+def beam_params(size_x,size_y,powers,wl):
     """
     Function that calculates the beam waist, spot size in cm^2, energy required (in J) for the desired fluences and the number of photons at each fluence.
     Params:
     size_x: Size of beam in x direction (micrometers)
     size_y: Size of beam in y direction (micrometers)
-    powers: List of experimental powers (micro W /cm^2)
-    ramp: Time of an experiment (10ns,50ns,100ns, etc...) this is used to convert W to J
+    powers: List of experimental powers (micro W )
     wl: Wavelength of pump beam
 
     Returns:
@@ -177,10 +176,10 @@ def beam_params(size_x,size_y,powers,ramp,wl):
     area_c2 = area_m2*1e4 #area in cm^2
 
     powers = np.asarray(powers)/1000  # Converts micro W to nJ/pulse
-    fluences = ramp*(powers *10**-9)/area_c2 #Converts from nJ/pulse  to J cm^-2
+    fluences = (powers *10**-9)/area_c2 #Converts from nJ/pulse  to J cm^-2
 
 
-    e_pump = h*(c/wl*nano) ## Pump energy in J
+    e_pump = (h*c)/(wl*nano) ## Pump energy in J
     n_photon = fluences/e_pump # Converts fluence to number of photons per cm^2
     return fluences,n_photon,radius
 
@@ -325,7 +324,7 @@ def micro_mask(name,t):
         time_mask = slice(start,stop,step)
         return time_mask
 
-def shear_shift(trace,t,wl,tu,tl,wlu,wll):
+def shear_shift(trace,t,wl,wlu,wll):
     """
     This function uses the affine transform to correct for shear on the CCD in the streak camera.
     It then reasserts bin widths and corrects for t0
@@ -362,7 +361,7 @@ def shear_shift(trace,t,wl,tu,tl,wlu,wll):
     new_dwl[-1]=-dwl[-1]
     trace/=new_dt[np.newaxis,:]
     trace/=new_dwl[:,np.newaxis]
-    irf = trace[:,(t>tl)&(t<tu)][(wl>wll)&(wl<wlu),:].sum(axis=0)
+    irf = trace[(wl>wll)&(wl<wlu),:].sum(axis=0)
     max_pix=np.argmax(irf)
     t0 = t[max_pix]
     t-= t0
@@ -569,6 +568,17 @@ def kin_slices(w,es,ef,e,trace,norm):
     return slices
 
 def despike_median(data, size, threshold=5):
+    """This function takes the trace, finds the median value within the threshold (default =5) and removes data points
+    outside of this value in order to remove "spikes"  from streak traces
+    Parameters:
+        data: unpacked trace, (NxM) numpy array
+        size: size of array to be passed to the np.ndimage.median_filter function
+        threshold: number of standard deviations in which to find the median around, default= 5
+
+    Returns:
+        despiked: Data with outlier points removed
+
+    Returns:"""
     cutoff = np.std(data) * threshold
     filtered = median_filter(data, size=size)
     reject = np.abs(filtered-data) > cutoff
@@ -577,5 +587,13 @@ def despike_median(data, size, threshold=5):
     return despiked
 
 
-
+def save_slices(x, slices, fname,dtype):
+    """Save a {(name, array)} dict to fname.
+    """
+    dat = [x]
+    dat.extend(slices.values())
+    dat = np.array(dat).transpose()
+    h = [str(dtype)] + list(slices.keys())
+    hdr = ' '.join(['{:>10}']*len(h)).format(*h)
+    np.savetxt(fname, dat, header=hdr, fmt='%.04e')
 
