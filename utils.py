@@ -173,7 +173,7 @@ def beam_params(size_x,size_y,powers,wl):
     beam_diam = np.sqrt(size_x*size_y)*10**-6 # diameter in m
     radius = beam_diam/2 #radius in m
     area_m2 = np.pi*(radius*radius)  #area in m^2
-    area_c2 = area_m2*1e4 #area in cm^2
+    area_c2 = area_m2*1e4 #area in cm^2 per pulse
 
     powers = np.asarray(powers)/1000  # Converts micro W to nJ/pulse
     fluences = (powers *10**-9)/area_c2 #Converts from nJ/pulse  to J cm^-2
@@ -595,5 +595,9 @@ def save_slices(x, slices, fname,dtype):
     dat = np.array(dat).transpose()
     h = [str(dtype)] + list(slices.keys())
     hdr = ' '.join(['{:>10}']*len(h)).format(*h)
-    np.savetxt(fname, dat, header=hdr, fmt='%.04e')
+    np.savetxt(fname, dat, header=hdr)
 
+
+def nm2ev(wl):
+    e = (h*c/(wl*nano))/eV
+    return e
